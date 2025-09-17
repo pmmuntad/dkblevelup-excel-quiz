@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUIZ </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-blue-100 min-h-screen py-8">
+    <div class="max-w-4xl mx-auto px-4">
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <!-- Header Section -->
+            <div class="text-center mb-8 border-b-2 border-gray-200 pb-6">
+                <!-- Logo -->
+                <div class="mb-4">
+
+                    <img src="/LOGO DKB.png" class="inline-flex items-center justify-center w-auto h-10 ">
+                </div>
+                
+                <!-- Title -->
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">DKB LEVEL UP</h1>
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-full inline-block mb-4">
+                    <span class="font-semibold">BOOTCAMP : MICROSOFT EXCEL</span>
+                </div>
+                
+                <!-- Subtitle -->
+                <h2 class="text-2xl font-bold text-gray-700 mb-2" id="quizTitle">Quiz 1</h2>
+                
+            </div>
+
+            <form id="pollingForm" class="space-y-8">
+                <!-- Nama Lengkap -->
+                <div class="space-y-2">
+                    <label for="namaLengkap" class="block text-lg font-semibold text-gray-700">
+                        Nama Lengkap <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="namaLengkap" 
+                        name="namaLengkap" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+                        placeholder="Masukkan nama lengkap Anda"
+                    >
+                </div>
+
+                <!-- Data Tabel Absensi -->
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                        Data Tabel
+                        <span id="loadingIndicator" class="ml-3 text-sm text-blue-600">🔄 Memuat data...</span>
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-gray-300 bg-white rounded-lg">
+                            <thead class="bg-blue-600 text-white" id="tableHeader">
+                                <tr>
+                                    <th class="border border-gray-300 px-4 py-3 text-left font-semibold">Loading...</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody">
+                                <!-- Data akan dimuat dari Google Sheets -->
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                        Memuat data dari Google Sheets...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    
+                </div>
+
+                <!-- Pertanyaan Polling -->
+                <div class="space-y-6">
+                    <div class="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            ❓ Pertanyaan
+                            <span id="questionLoadingIndicator" class="ml-3 text-sm text-blue-600">🔄 Memuat pertanyaan...</span>
+                        </h2>
+                        <p id="questionText" class="text-gray-700 text-lg leading-relaxed">
+                            Memuat pertanyaan dari Google Sheets...
+                        </p>
+                    </div>
+
+                    <!-- Multiple Choice Answers -->
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                            🚨 Pilih jawaban yang paling tepat:
+                        </h3>
+                        <div id="answersContainer" class="space-y-4">
+                            <div class="text-center text-gray-500 py-8">
+                                Memuat pilihan jawaban dari Google Sheets...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-6">
+                    <button 
+                        type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-4 px-6 rounded-lg hover:from-green-700 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                    >
+                        📤 Kirim Jawaban ke WhatsApp
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        const quizName = getQueryParam('quiz') || 'QUIZ 1'; // default ke 'QUIZ 1' jika tidak ada parameter
+        document.getElementById('quizTitle').textContent = quizName;
+        // Load data from Google Sheets when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGoogleSheetsData();
+            loadQuestionsAndAnswers();
+        });
+
+        async function loadGoogleSheetsData() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tableBody = document.getElementById('attendanceTableBody');
+            const tableHeader = document.getElementById('tableHeader');
+            
+            try {
+                // Google Sheets CSV export URL for "QUIZ 1" sheet
+                const sheetId = '1wp6LVrC86uHMq_njl3djzuF7PM_Eu9bRgb68HYR6riI';
+                const quizToGid = {
+                    'QUIZ 1': '0',
+                    'QUIZ 2': 'YOUR_GID_2',
+                    'QUIZ 3': 'YOUR_GID_3'
+                    // tambahkan sesuai kebutuhan
+                };
+
+                const gid = quizToGid[quizName] || '0'; // fallback ke gid 0
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                
+                loadingIndicator.textContent = '🔄 Mengambil data...';
+                
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                
+                // Parse CSV data
+                const rows = csvText.split('\n').filter(row => row.trim() !== '');
+                
+                if (rows.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                Tidak ada data ditemukan
+                            </td>
+                        </tr>
+                    `;
+                    loadingIndicator.textContent = '❌ Data kosong';
+                    return;
+                }
+                
+                // Get headers from first row
+                const headerRow = rows[0];
+                const headers = headerRow.split(',').map(col => col.replace(/"/g, '').trim()).filter(header => header !== '');
+                
+                // Create header row
+                tableHeader.innerHTML = `
+                    <tr>
+                        ${headers.map(header => `<th class="border border-gray-300 px-4 py-3 text-left font-semibold">${header}</th>`).join('')}
+                    </tr>
+                `;
+                
+                // Get data rows (skip header)
+                const dataRows = rows.slice(1);
+                
+                // Clear loading message
+                tableBody.innerHTML = '';
+                
+                if (dataRows.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="${headers.length}" class="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                Tidak ada data ditemukan
+                            </td>
+                        </tr>
+                    `;
+                    loadingIndicator.textContent = '❌ Data kosong';
+                    return;
+                }
+                
+                // Populate table with data
+                dataRows.forEach((row, index) => {
+                    const columns = row.split(',').map(col => col.replace(/"/g, '').trim());
+                    
+                    // Only show rows that have data in at least the first column
+                    if (columns[0] && columns[0] !== '') {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-gray-50';
+                        
+                        // Create cells for each column, matching the number of headers
+                        let cellsHTML = '';
+                        for (let i = 0; i < headers.length; i++) {
+                            const cellValue = columns[i] || ''; // Use empty string if no data
+                            cellsHTML += `<td class="border border-gray-300 px-4 py-3">${cellValue}</td>`;
+                        }
+                        
+                        tr.innerHTML = cellsHTML;
+                        tableBody.appendChild(tr);
+                    }
+                });
+                
+                loadingIndicator.textContent = '✅ Data berhasil dimuat';
+                setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error loading Google Sheets data:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td class="border border-gray-300 px-4 py-8 text-center text-red-500">
+                            ❌ Gagal memuat data dari Google Sheets
+                            <br><small>Pastikan sheet dapat diakses publik</small>
+                        </td>
+                    </tr>
+                `;
+                loadingIndicator.textContent = '❌ Gagal memuat';
+            }
+        }
+
+        function parseCSVRow(row) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                if (char === '"' && (i === 0 || row[i - 1] !== '\\')) {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+
+            return result.map(field => {
+                if (field.startsWith('"') && field.endsWith('"')) {
+                    return field.slice(1, -1).replace(/""/g, '"');
+                }
+                return field.trim();
+            });
+        }
+
+        async function loadQuestionsAndAnswers() {
+            const questionLoadingIndicator = document.getElementById('questionLoadingIndicator');
+            const questionText = document.getElementById('questionText');
+            const answersContainer = document.getElementById('answersContainer');
+            
+            try {
+                // Google Sheets CSV export URL for "QNA" sheet
+                const sheetId = '1wp6LVrC86uHMq_njl3djzuF7PM_Eu9bRgb68HYR6riI';
+                // You may need to find the correct gid for "QNA" sheet
+                const qnaGid = '542356810'; // This might need to be adjusted for the QNA sheet
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${qnaGid}`;
+                
+                questionLoadingIndicator.textContent = '🔄 Mengambil pertanyaan...';
+                
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+
+                console.log(csvText)
+                
+                // Parse CSV data
+                const rows = csvText.split('\n').filter(row => row.trim() !== '');
+                
+                if (rows.length === 0) {
+                    questionText.textContent = 'Tidak ada pertanyaan ditemukan';
+                    answersContainer.innerHTML = '<div class="text-center text-red-500 py-8">Tidak ada pilihan jawaban ditemukan</div>';
+                    questionLoadingIndicator.textContent = '❌ Data kosong';
+                    return;
+                }
+                
+                // Get headers from first row
+                const headerRow = rows[0];
+                const headers = headerRow.split(',').map(col => col.replace(/"/g, '').trim());
+                
+                // Find column indices
+                const dataIndex = headers.findIndex(h => h.toLowerCase().includes('data'));
+                const pertanyaanIndex = headers.findIndex(h => h.toLowerCase().includes('pertanyaan'));
+                const aIndex = headers.findIndex(h => h.toLowerCase() === 'a');
+                const bIndex = headers.findIndex(h => h.toLowerCase() === 'b');
+                const cIndex = headers.findIndex(h => h.toLowerCase() === 'c');
+                const dIndex = headers.findIndex(h => h.toLowerCase() === 'd');
+                
+                // Find the row where DATA column equals "QUIZ 1"
+                let questionData = null;
+                for (let i = 1; i < rows.length; i++) {
+                    const columns = parseCSVRow(rows[i]);
+                    if (columns[dataIndex] && columns[dataIndex].toLowerCase() === quizName.toLowerCase()) {
+                        questionData = columns;
+                        break;
+                    }
+                }
+                
+                if (!questionData) {
+                    questionText.textContent = `Pertanyaan untuk ${quizName} tidak ditemukan`;
+                    answersContainer.innerHTML = `<div class="text-center text-red-500 py-8">Data ${quizName} tidak ditemukan di sheet QNA</div>`;
+                    questionLoadingIndicator.textContent = '❌ Data tidak ditemukan';
+                    return;
+                }
+                
+                // Set question text
+                if (pertanyaanIndex >= 0 && questionData[pertanyaanIndex]) {
+                    questionText.innerHTML = questionData[pertanyaanIndex];
+                } else {
+                    questionText.textContent = 'Pertanyaan tidak tersedia';
+                }
+                
+                // Create answer options
+                const answers = [
+                    { letter: 'A', index: aIndex },
+                    { letter: 'B', index: bIndex },
+                    { letter: 'C', index: cIndex },
+                    { letter: 'D', index: dIndex }
+                ];
+                
+                let answersHTML = '';
+                answers.forEach(answer => {
+                    if (answer.index >= 0 && questionData[answer.index]) {
+                        answersHTML += `
+                            <label class="flex items-start space-x-3 cursor-pointer hover:bg-white p-4 rounded-lg border-2 border-transparent hover:border-blue-200 transition-all">
+                                <input type="radio" name="jawaban" value="${answer.letter}" class="w-5 h-5 text-blue-600 focus:ring-blue-500 mt-1">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">${answer.letter}</span>
+                                    </div>
+                                    <p class="text-gray-600 text-sm">${questionData[answer.index]}</p>
+                                </div>
+                            </label>
+                        `;
+                    }
+                });
+                
+                if (answersHTML) {
+                    answersContainer.innerHTML = answersHTML;
+                } else {
+                    answersContainer.innerHTML = '<div class="text-center text-red-500 py-8">Pilihan jawaban tidak tersedia</div>';
+                }
+                
+                questionLoadingIndicator.textContent = '✅ Pertanyaan berhasil dimuat';
+                setTimeout(() => {
+                    questionLoadingIndicator.style.display = 'none';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error loading questions and answers:', error);
+                questionText.textContent = 'Gagal memuat pertanyaan dari Google Sheets';
+                answersContainer.innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        ❌ Gagal memuat pilihan jawaban
+                        <br><small>Pastikan sheet QNA dapat diakses publik</small>
+                    </div>
+                `;
+                questionLoadingIndicator.textContent = '❌ Gagal memuat';
+            }
+        }
+
+        document.getElementById('pollingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const namaLengkap = document.getElementById('namaLengkap').value.trim();
+            
+            if (!namaLengkap) {
+                alert('Mohon isi nama lengkap terlebih dahulu!');
+                return;
+            }
+            
+            // Get selected answer
+            const selectedAnswer = document.querySelector('input[name="jawaban"]:checked');
+            
+            if (!selectedAnswer) {
+                alert('Mohon pilih salah satu jawaban terlebih dahulu!');
+                return;
+            }
+            
+            // Create WhatsApp message
+            let message = `*${quizName}*\n\n`;
+            message += `👤 *Nama:* ${namaLengkap}\n\n`;
+            
+            message += `❓ *Pertanyaan:*\n${questionText.textContent}\n\n`;
+            
+            message += `✅ *Jawaban Dipilih:* ${selectedAnswer.value}\n\n`;
+            
+            // Get the selected answer text
+            const selectedLabel = selectedAnswer.closest('label');
+            const answerText = selectedLabel ? selectedLabel.querySelector('p').textContent : 'Tidak tersedia';
+            
+            message += `📝 *Detail Jawaban:*\n${answerText}`;
+            
+            message += `\n📅 *Waktu Pengisian:* ${new Date().toLocaleString('id-ID')}`;
+            
+            // Encode message for WhatsApp URL
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappURL = `https://wa.me/6285161055918?text=${encodedMessage}`;
+            
+            // Open WhatsApp
+            window.open(whatsappURL, '_blank');
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9806200ed6a71f6e',t:'MTc1ODA4NjEyMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
