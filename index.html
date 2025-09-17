@@ -163,16 +163,38 @@
                 }
                 
                 // Get headers from first row
-                const headerRow = rows[0];
-                const headers = headerRow.split(',').map(col => col.replace(/"/g, '').trim()).filter(header => header !== '');
+                const headerRows = rows[0];
+                const headers = headerRows.split(',').map(col => col.replace(/"/g, '').trim()).filter(header => header !== '');
                 
                 // Create header row
-                tableHeader.innerHTML = `
-                    <tr>
-                        ${headers.map(header => `<th class="border border-gray-300 px-4 py-3 text-left font-semibold">${header}</th>`).join('')}
-                    </tr>
-                `;
-                
+                // Fungsi untuk mengonversi angka ke huruf kolom Excel (0->A, 1->B, ..., 26->AA, dst)
+                function getColumnLetter(colIndex) {
+                    let letter = '';
+                    while (colIndex >= 0) {
+                        letter = String.fromCharCode(colIndex % 26 + 65) + letter;
+                        colIndex = Math.floor(colIndex / 26) - 1;
+                    }
+                    return letter;
+                }
+
+                // Baris 1: Indeks Kolom (A, B, C, ...)
+                let colIndexRow = `<tr><th class="border border-gray-300 px-4 py-2 text-center font-bold bg-gray-200"></th>`; // Header untuk nomor baris tetap ada
+                headers.forEach((_, index) => {
+                    const colLetter = getColumnLetter(index);
+                    colIndexRow += `<th class="border border-gray-300 px-4 py-2 text-center font-bold bg-blue-400 text-white">${colLetter}</th>`;
+                });
+                colIndexRow += `</tr>`;
+
+                // Baris 2: Nama Header Kolom
+                let headerRow = `<tr><th class="border border-gray-300 px-4 py-3 text-center font-semibold bg-gray-400">1</th>`; // Tetap tampilkan # di header nama kolom
+                headers.forEach(header => {
+                    headerRow += `<th class="border border-gray-300 px-4 py-3 text-left font-semibold bg-blue-500">${header}</th>`;
+                });
+                headerRow += `</tr>`;
+
+                // Gabungkan kedua baris header
+                tableHeader.innerHTML = colIndexRow + headerRow;
+                                
                 // Get data rows (skip header)
                 const dataRows = rows.slice(1);
                 
@@ -192,6 +214,7 @@
                 }
                 
                 // Populate table with data
+                let rowIndex = 2; // Mulai dari 1
                 dataRows.forEach((row, index) => {
                     const columns = row.split(',').map(col => col.replace(/"/g, '').trim());
                     
@@ -200,8 +223,11 @@
                         const tr = document.createElement('tr');
                         tr.className = 'hover:bg-gray-50';
                         
+                        // Tambahkan sel untuk nomor baris
+                        let cellsHTML = `<td class="border border-gray-300 px-4 py-3 text-center font-medium bg-gray-50">${rowIndex}</td>`;
+                        rowIndex++; // Increment nomor baris
+                        
                         // Create cells for each column, matching the number of headers
-                        let cellsHTML = '';
                         for (let i = 0; i < headers.length; i++) {
                             const cellValue = columns[i] || ''; // Use empty string if no data
                             cellsHTML += `<td class="border border-gray-300 px-4 py-3">${cellValue}</td>`;
